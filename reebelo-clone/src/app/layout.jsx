@@ -2,7 +2,7 @@ import "../styles.css";
 
 export const metadata = {
   title: "KG Phone Store",
-  description: "Premium iPhone, Samsung Galaxy, and Google Pixel phones in Rwanda.",
+  description: "Premium iPhone, Samsung Galaxy with s series, and Google Pixel phones in Rwanda.",
 };
 
 export default function RootLayout({ children }) {
