@@ -1,91 +1,107 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import {
+  CaretLeft,
   CaretRight,
   CheckCircle,
-  Funnel,
-  Heart,
   List,
   MagnifyingGlass,
-  Minus,
+  Pause,
+  Play,
   Plus,
-  ShoppingCart,
-  SlidersHorizontal,
   Star,
-  UserCircle,
   WhatsappLogo,
   X,
 } from "@phosphor-icons/react";
 
 const A = "/assets/";
+const STORE_NAME = "KG Phone Store";
 const WHATSAPP_NUMBER = "250784001835";
 const DISPLAY_PHONE = "+250 784 001 835";
 const INSTAGRAM = "nidodos";
 
-const STORAGE_KEY = "dodo-technologies-admin-phones";
-
-const nav = ["Deals", "iPhones", "Samsung", "Google Pixel", "Pre-owned", "Warranty", "Admin", "Instagram"];
-
-const categories = [
-  ["iPhones", "dodo-iphone.png"],
-  ["Samsung Galaxy", "dodo-samsung.png"],
-  ["Google Pixel", "dodo-pixel.png"],
-  ["Flagship Phones", "dodo-samsung.png"],
-  ["Budget Phones", "dodo-pixel.png"],
-  ["Clean Pre-owned", "dodo-iphone.png"],
+const nav = [
+  { label: "All phones", route: "collection" },
+  { label: "Deals", route: "deals" },
+  { label: "Warranty", route: "help" },
+  { label: "Admin", route: "admin" },
+  { label: "Instagram", href: `https://instagram.com/${INSTAGRAM}` },
 ];
 
-const tabs = ["All Phones", "iPhone", "Samsung", "Pixel", "Flagship", "Best Deals"];
+const BASE_BRANDS = ["iPhone", "Samsung", "Samsung Galaxy", "Pixel", "Google Pixel"];
 
-const products = [
-  ["iPhone 16 Pro Max", "256GB, Desert Titanium, eSIM, Unlocked", 1680000, "dodo-iphone.png", "New Arrival"],
-  ["iPhone 15 Pro Max", "256GB, Blue Titanium, Unlocked", 1260000, "dodo-iphone.png", "Hot Deal"],
-  ["iPhone 14 Pro Max", "128GB, Deep Purple, Unlocked", 780000, "dodo-iphone.png", "Best Seller"],
-  ["iPhone 13", "128GB, Starlight, Unlocked", 495000, "dodo-iphone.png", "Clean Stock"],
-  ["Samsung Galaxy S24 Ultra", "256GB, Titanium Gray, Dual SIM", 1380000, "dodo-samsung.png", "Flagship"],
-  ["Samsung Galaxy S23 Ultra", "256GB, Phantom Black, Dual SIM", 980000, "dodo-samsung.png", "Hot Deal"],
-  ["Samsung Galaxy S22", "128GB, Green, Dual SIM", 560000, "dodo-samsung.png", "Clean Stock"],
-  ["Samsung Galaxy A55", "128GB, Awesome Iceblue, Dual SIM", 430000, "dodo-samsung.png", "Budget Pick"],
-  ["Google Pixel 9 Pro", "256GB, Obsidian, Unlocked", 1120000, "dodo-pixel.png", "New Arrival"],
-  ["Google Pixel 8 Pro", "128GB, Porcelain, Unlocked", 760000, "dodo-pixel.png", "Hot Deal"],
-  ["Google Pixel 7", "128GB, Snow, Unlocked", 420000, "dodo-pixel.png", "Value Deal"],
-  ["Google Pixel 6a", "128GB, Charcoal, Unlocked", 290000, "dodo-pixel.png", "Budget Pick"],
+const DEMO_PRODUCTS = [
+  ["iPhone 15 Pro Max", "256GB, Natural Titanium, 93% battery, unlocked", 1280000, "iphone-79.png", "Demo stock", "demo-iphone-15-pro-max", "demo", "iPhone"],
+  ["iPhone 14 Pro", "128GB, Deep Purple, 90% battery, unlocked", 870000, "iphone-27.png", "Demo deal", "demo-iphone-14-pro", "demo", "iPhone"],
+  ["Samsung Galaxy S24 Ultra", "256GB, Titanium Gray, dual SIM, clean box", 1360000, "dodo-samsung.png", "Demo flagship", "demo-s24-ultra", "demo", "Samsung"],
+  ["Samsung Galaxy S23", "256GB, Phantom Black, dual SIM, excellent", 790000, "phones-49.png", "Demo pick", "demo-s23", "demo", "Samsung"],
+  ["Google Pixel 8 Pro", "128GB, Obsidian, unlocked, excellent camera", 760000, "dodo-pixel.png", "Demo camera", "demo-pixel-8-pro", "demo", "Pixel"],
+  ["Google Pixel 7", "128GB, Snow, unlocked, clean condition", 420000, "smartphones-40.png", "Demo value", "demo-pixel-7", "demo", "Pixel"],
+  ["iPhone 13", "128GB, Midnight, 89% battery, unlocked", 520000, "dodo-iphone.png", "Demo budget", "demo-iphone-13", "demo", "iPhone"],
+  ["Samsung Galaxy A55", "128GB, Ice Blue, dual SIM, like new", 430000, "smartphones-16.png", "Demo budget", "demo-a55", "demo", "Samsung"],
 ];
-
-const filters = ["Series", "Storage", "Color", "Condition", "Battery Health", "SIM Type", "Price Range"];
-
-function loadAdminProducts() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveAdminProducts(nextProducts) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProducts));
-}
 
 function currency(value) {
-  return `Rwf ${value.toLocaleString("en-RW")}`;
+  return `Rwf ${Number(value || 0).toLocaleString("en-RW")}`;
 }
 
 function imageSrc(img) {
-  if (!img) return `${A}dodo-iphone.png`;
+  if (!img) return "";
   return img.startsWith("http") || img.startsWith("data:") ? img : `${A}${img}`;
 }
 
 function whatsappUrl(product) {
+  if (!product) {
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hi ${STORE_NAME}, please share current phone availability.`)}`;
+  }
+
   const [name, specs, price] = product;
-  const text = `Hi DODO TECHNOLOGIES, I am interested in ${name}. Specs: ${specs}. Listed price: ${currency(price)}. Please send availability and payment details.`;
+  const text = `Hi ${STORE_NAME}, I am interested in ${name}. Specs: ${specs}. Listed price: ${currency(price)}. Please send availability and payment details.`;
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+}
+
+function productBrand(product) {
+  return product?.[7] || product?.[4] || "Phones";
+}
+
+function isFeatured(product) {
+  return Boolean(product?.[8]);
+}
+
+function getBrands(products) {
+  return [...new Set(products.map(productBrand).filter(Boolean))];
+}
+
+function getCategoryProducts(products) {
+  return getBrands(products).map((brand) => {
+    const product = products.find((item) => productBrand(item) === brand);
+    return { brand, image: product?.[3] || "", count: products.filter((item) => productBrand(item) === brand).length };
+  });
+}
+
+function getSearchTerms(products) {
+  return [...new Set(products.flatMap((product) => [product[0], productBrand(product), product[1]?.split(",")[0]].filter(Boolean)))].slice(0, 5);
+}
+
+function getSpecPills(meta) {
+  return String(meta || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function matchesBrand(product, active) {
+  if (active === "All") return true;
+  return productBrand(product).toLowerCase().includes(active.toLowerCase());
 }
 
 function AppLogo({ compact = false }) {
   return (
     <button className={`logo ${compact ? "compact" : ""}`} onClick={() => { location.hash = "#/"; }}>
-      <span className="logoMain">DODO</span>
-      <span className="logoSub">TECHNOLOGIES</span>
+      <span className="logoMain">KG</span>
+      <span className="logoSub">PHONE STORE</span>
     </button>
   );
 }
@@ -93,51 +109,49 @@ function AppLogo({ compact = false }) {
 function Header({ setRoute, products }) {
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
-  const [cart, setCart] = useState(false);
   const go = (next) => setRoute(next);
+  const featured = products[0];
   return (
     <>
       <header className="topbar">
         <div className="topline">
-          <button className="iconButton mobileOnly" onClick={() => setMenu(true)} aria-label="Open menu"><List size={22} /></button>
+          <button className="menuButton" onClick={() => setMenu(true)} aria-label="Open menu"><List size={22} /></button>
           <AppLogo />
           <button className="search" onClick={() => setSearch(true)}>
             <span>Search phone model, color, storage...</span>
             <MagnifyingGlass size={24} />
           </button>
           <button className="help" onClick={() => go("help")}>Need help?</button>
-          <button className="iconButton" aria-label="Account"><UserCircle size={25} /></button>
-          <button className="iconButton" onClick={() => setCart(true)} aria-label="Cart"><ShoppingCart size={27} /></button>
+          <a className="topWhatsapp" href={whatsappUrl(featured)} target="_blank" rel="noreferrer"><WhatsappLogo size={18} weight="fill" /> WhatsApp</a>
         </div>
-        <nav className="navline">
-          <button className="allItems" onClick={() => setMenu(true)}><List size={18} /> All phones</button>
-          {nav.map((item) => item === "Instagram" ? <a key={item} href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">{item}</a> : <button key={item} onClick={() => go(item === "Deals" ? "deals" : item === "Admin" ? "admin" : "collection")}>{item}</button>)}
-          <a className="sell whatsappTop" href={whatsappUrl(products[0])} target="_blank" rel="noreferrer"><WhatsappLogo size={18} weight="fill" /> WhatsApp</a>
-        </nav>
       </header>
-      {menu && <MenuDrawer onClose={() => setMenu(false)} go={go} />}
+      {menu && <MenuDrawer onClose={() => setMenu(false)} go={go} products={products} />}
       {search && <SearchModal onClose={() => setSearch(false)} go={go} products={products} />}
-      {cart && <CartDrawer onClose={() => setCart(false)} product={products[0]} />}
     </>
   );
 }
 
-function MenuDrawer({ onClose, go }) {
+function MenuDrawer({ onClose, go, products }) {
+  const categories = getCategoryProducts(products);
   return (
     <aside className="overlay">
       <div className="drawer leftDrawer">
         <button className="close" onClick={onClose} aria-label="Close menu"><X size={20} /></button>
         <AppLogo compact />
-        <h2>Shop phones</h2>
-        <button className="menuRow adminMenuRow" onClick={() => { go("admin"); onClose(); }}>
-          <span className="menuIcon">+</span>
-          <span>Admin panel</span>
-          <CaretRight />
-        </button>
-        {categories.map(([name, img]) => (
-          <button className="menuRow" key={name} onClick={() => { go("collection"); onClose(); }}>
-            <img src={imageSrc(img)} alt="" />
-            <span>{name}</span>
+        <h2>Menu</h2>
+        <div className="drawerNav">
+          {nav.map((item) => item.href ? (
+            <a className="drawerLink" href={item.href} target="_blank" rel="noreferrer" key={item.label}>{item.label}<CaretRight /></a>
+          ) : (
+            <button className="drawerLink" key={item.label} onClick={() => { go(item.route); onClose(); }}>{item.label}<CaretRight /></button>
+          ))}
+        </div>
+        <h3>Shop by brand</h3>
+        {categories.length === 0 && <p className="emptyState">No backend inventory is available yet.</p>}
+        {categories.map(({ brand, image, count }) => (
+          <button className="menuRow" key={brand} onClick={() => { go("collection"); onClose(); }}>
+            {image ? <img src={imageSrc(image)} alt="" /> : <span className="menuIcon">KG</span>}
+            <span>{brand}<small>{count} in backend</small></span>
             <CaretRight />
           </button>
         ))}
@@ -149,6 +163,7 @@ function MenuDrawer({ onClose, go }) {
 function SearchModal({ onClose, go, products }) {
   const [term, setTerm] = useState("");
   const results = products.filter((p) => `${p[0]} ${p[1]}`.toLowerCase().includes(term.toLowerCase())).slice(0, 6);
+  const quickTerms = getSearchTerms(products);
   return (
     <aside className="overlay centerOverlay">
       <div className="searchPanel">
@@ -158,27 +173,12 @@ function SearchModal({ onClose, go, products }) {
           <input autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search Pixel 8 Pro, S24 Ultra, iPhone 15..." />
         </label>
         <div className="quickTerms">
-          {["iPhone 16", "Galaxy S24", "Pixel 9", "Pro Max", "128GB"].map((item) => <button key={item} onClick={() => setTerm(item)}>{item}</button>)}
+          {quickTerms.map((item) => <button key={item} onClick={() => setTerm(item)}>{item}</button>)}
         </div>
         <div className="searchResults">
-          {(term ? results : products.slice(0, 4)).map((p) => <ProductMini key={p[0]} product={p} onClick={() => { go("product"); onClose(); }} />)}
+          {(term ? results : products.slice(0, 4)).map((p) => <ProductMini key={p[5] || p[0]} product={p} onClick={() => { go("product"); onClose(); }} />)}
+          {products.length === 0 && <p className="emptyState">No products are currently returned by the backend.</p>}
         </div>
-      </div>
-    </aside>
-  );
-}
-
-function CartDrawer({ onClose, product }) {
-  return (
-    <aside className="overlay">
-      <div className="drawer">
-        <button className="close" onClick={onClose} aria-label="Close cart"><X size={20} /></button>
-        <h2>Your shortlist</h2>
-        <p className="muted">Send your chosen phone to DODO TECHNOLOGIES on WhatsApp to confirm stock.</p>
-        <ProductMini product={product} />
-        <div className="cartLine"><span>Estimated price</span><strong>{currency(product[2])}</strong></div>
-        <a className="primary wide whatsappCta" href={whatsappUrl(product)} target="_blank" rel="noreferrer"><WhatsappLogo size={20} weight="fill" /> Chat on WhatsApp</a>
-        <button className="secondary wide" onClick={onClose}>Keep browsing</button>
       </div>
     </aside>
   );
@@ -195,60 +195,89 @@ function TrustBar() {
   );
 }
 
-function Hero({ product }) {
+function Hero({ products, demoMode }) {
+  const featuredProducts = products.filter(isFeatured);
+  const slides = featuredProducts.length > 0 ? featuredProducts : products.slice(0, 1);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const product = slides[active] || products[0];
+  const image = imageSrc(product?.[3]);
+
+  useEffect(() => {
+    setActive(0);
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (slides.length < 2 || paused) return undefined;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), 5500);
+    return () => window.clearInterval(timer);
+  }, [paused, slides.length]);
+
+  const previousSlide = () => setActive((current) => (current - 1 + slides.length) % slides.length);
+  const nextSlide = () => setActive((current) => (current + 1) % slides.length);
+
   return (
     <section className="hero">
-      <img className="heroLeft" src={imageSrc("dodo-samsung.png")} alt="" />
+      {image && <img className="heroLeft" src={image} alt="" />}
       <div className="heroCopy">
-        <p className="heroBrand">DODO TECHNOLOGIES</p>
-        <h1>Premium Phones in RWF</h1>
-        <p>iPhones, Samsung Galaxy, and Google Pixel. Direct WhatsApp help.</p>
+        <p className="heroBrand">{STORE_NAME}</p>
+        <h1>{product ? "Premium phones. Clear prices. Fast WhatsApp." : "Backend inventory required"}</h1>
+        <p>{product ? `${product[0]} is featured in this ${demoMode ? "demo preview" : "live inventory"} view.` : "Add real phones in admin to populate the storefront."}</p>
         <a className="primary whatsappCta" href={whatsappUrl(product)} target="_blank" rel="noreferrer"><WhatsappLogo size={20} weight="fill" /> Ask on WhatsApp</a>
       </div>
-      <img className="heroRight" src={imageSrc("dodo-pixel.png")} alt="" />
+      {image && <img className="heroRight" src={image} alt="" />}
+      {slides.length > 1 && (
+        <div className="heroControls" aria-label="Featured phones">
+          <button className="heroArrow" onClick={previousSlide} aria-label="Previous featured phone"><CaretLeft size={18} /></button>
+          <button className="heroPlay" onClick={() => setPaused((current) => !current)} aria-label={paused ? "Play featured carousel" : "Pause featured carousel"}>
+            {paused ? <Play size={15} weight="fill" /> : <Pause size={15} weight="fill" />}
+          </button>
+          <div className="heroDots">
+            {slides.map((slide, index) => (
+              <button className={active === index ? "active" : ""} key={slide[5] || slide[0]} onClick={() => setActive(index)} aria-label={`Show ${slide[0]}`} />
+            ))}
+          </div>
+          <button className="heroArrow" onClick={nextSlide} aria-label="Next featured phone"><CaretRight size={18} /></button>
+        </div>
+      )}
     </section>
   );
 }
 
-function HomePage({ setRoute, products }) {
+function HomePage({ setRoute, products, databaseReady, backendError, demoMode }) {
+  const categories = getCategoryProducts(products);
+
   return (
     <>
-      <Hero product={products[0]} />
+      <Hero products={products} demoMode={demoMode} />
+      {demoMode && <DemoPreviewNotice databaseReady={databaseReady} error={backendError} />}
       <TrustBar />
       <section className="section white">
-        <h2>Shop by Phone Family</h2>
+        <div className="sectionHead">
+          <h2>Shop by phone family</h2>
+          <button onClick={() => setRoute("collection")}>Browse all <CaretRight size={16} /></button>
+        </div>
         <div className="categoryGrid">
-          {categories.map(([name, img]) => <button key={name} className="category" onClick={() => setRoute("collection")}><img src={imageSrc(img)} alt="" /><span>{name}</span></button>)}
+          {categories.map(({ brand, image, count }) => <button key={brand} className="category" onClick={() => setRoute("collection")}>{image ? <img src={imageSrc(image)} alt="" /> : <span className="categoryEmpty">KG</span>}<span>{brand}<small>{count} listed</small></span></button>)}
+          {categories.length === 0 && <EmptyInventory setRoute={setRoute} />}
         </div>
       </section>
-      <ProductStrip title="Customer Favorites" products={products.slice(0, 6)} setRoute={setRoute} tabs />
-      <ProductStrip title="Today's Phone Deals" products={products.slice(4, 10)} setRoute={setRoute} dealCard />
+      <ProductStrip title="Available phones" products={products} setRoute={setRoute} />
       <PromiseBand />
-      <ProductStrip title="Flagship Picks" products={products.filter((p) => p[0].includes("Ultra") || p[0].includes("Pro")).concat(products.slice(0, 2))} setRoute={setRoute} />
-      <ProductStrip title="Budget Phones" products={products.slice(7, 12)} setRoute={setRoute} />
-      <section className="videoBand">
-        <h2>How DODO TECHNOLOGIES Works</h2>
-        <p>Pick the phone you like, tap WhatsApp, and the model name with simple specs is prepared for chat.</p>
-        <div className="storyCards">
-          <div><WhatsappLogo size={42} weight="fill" /><span>Send the exact phone details.</span></div>
-          <div><CheckCircle size={42} /><span>Confirm stock, condition, and payment.</span></div>
-        </div>
-      </section>
     </>
   );
 }
 
-function ProductStrip({ title, products: list, setRoute, tabs: showTabs = false, dealCard = false }) {
+function ProductStrip({ title, products: list, setRoute }) {
+  if (list.length === 0) return null;
   return (
     <section className="section">
       <div className="sectionHead">
         <h2>{title}</h2>
         <button onClick={() => setRoute("collection")}>See all <CaretRight size={16} /></button>
       </div>
-      {showTabs && <div className="tabs">{tabs.map((tab, i) => <button className={i === 0 ? "active" : ""} key={tab}>{tab}</button>)}</div>}
-      <div className="strip">
-        {dealCard && <div className="dealCard"><p>DODO Deals</p><strong>iPhone, Samsung, Pixel</strong><button onClick={() => setRoute("collection")}>Shop deals</button></div>}
-        {list.map((product) => <ProductCard key={`${title}-${product[0]}`} product={product} onView={() => setRoute("product")} />)}
+      <div className="productGrid compactGrid">
+        {list.map((product, index) => <ProductCard key={`${title}-${product[5] || product[0]}-${index}`} product={product} onView={() => setRoute("product")} />)}
       </div>
     </section>
   );
@@ -256,27 +285,62 @@ function ProductStrip({ title, products: list, setRoute, tabs: showTabs = false,
 
 function ProductCard({ product, onView }) {
   const [name, meta, price, img, tag] = product;
+  const specs = getSpecPills(meta);
   return (
     <article className="productCard">
-      <span className="badge">{tag}</span>
       <button className="productView" onClick={onView}>
-        <img src={imageSrc(img)} alt={name} />
-        <strong>{name}</strong>
-        <small>{meta}</small>
-        <span className="price">{currency(price)} <em>Ask stock</em></span>
+        <span className="badge">{tag}</span>
+        <span className="productImage">{img ? <img src={imageSrc(img)} alt={name} /> : <span className="imageMissing">No image</span>}</span>
+        <span className="productInfo">
+          <span className="productBrand">{productBrand(product)}</span>
+          <strong>{name}</strong>
+          <span className="specPills">{specs.map((spec) => <span key={spec}>{spec}</span>)}</span>
+        </span>
       </button>
-      <a className="whatsappButton" href={whatsappUrl(product)} target="_blank" rel="noreferrer"><WhatsappLogo weight="fill" /> WhatsApp</a>
+      <div className="cardFooter">
+        <span className="price">{currency(price)} <em>Ask stock</em></span>
+        <a className="whatsappButton" href={whatsappUrl(product)} target="_blank" rel="noreferrer"><WhatsappLogo weight="fill" /> WhatsApp</a>
+      </div>
     </article>
   );
 }
 
 function ProductMini({ product, onClick }) {
+  if (!product) return null;
   return (
     <button className="miniProduct" onClick={onClick}>
-      <img src={imageSrc(product[3])} alt="" />
+      {product[3] ? <img src={imageSrc(product[3])} alt="" /> : <span className="imageMissing">No image</span>}
       <span><strong>{product[0]}</strong><small>{product[1]}</small></span>
       <b>{currency(product[2])}</b>
     </button>
+  );
+}
+
+function EmptyInventory({ setRoute }) {
+  return (
+    <div className="emptyInventory">
+      <h3>No backend inventory yet</h3>
+      <p>The storefront will stay empty until MongoDB returns real phone records.</p>
+      <button className="primary" onClick={() => setRoute("admin")}>Open admin</button>
+    </div>
+  );
+}
+
+function BackendNotice({ error }) {
+  return (
+    <section className="backendNotice">
+      <strong>Backend unavailable</strong>
+      <span>{error || "Configure MongoDB so the site can load real inventory."}</span>
+    </section>
+  );
+}
+
+function DemoPreviewNotice({ databaseReady, error }) {
+  return (
+    <section className="backendNotice demoNotice">
+      <strong>Demo data preview</strong>
+      <span>{databaseReady ? "MongoDB has no products yet, so demo phones are shown for layout visualization." : error || "Backend data is unavailable, so demo phones are shown for layout visualization."}</span>
+    </section>
   );
 }
 
@@ -284,52 +348,41 @@ function PromiseBand() {
   return (
     <section className="promise">
       <div>
-        <h2>Phones only.<br />Clear specs.</h2>
-        <p>Message <strong>{DISPLAY_PHONE}</strong> for availability and condition photos.</p>
-        <strong>DODO TECHNOLOGIES direct support</strong>
+        <h2>Simple phone buying, no noise.</h2>
+        <p>Choose a model, open WhatsApp, and confirm stock, battery health, condition photos, and payment directly.</p>
+        <strong>{STORE_NAME} direct support</strong>
       </div>
       <ul>
-        {["Only iPhone, Samsung, and Pixel", "Battery health checked", "Unlocked options highlighted", "Simple WhatsApp enquiry", "Condition confirmed before payment"].map((item) => <li key={item}><CheckCircle size={18} /> {item}</li>)}
+        {["Real stock first", "Clean product specs", "WhatsApp enquiry", "Condition confirmed before payment"].map((item) => <li key={item}><CheckCircle size={18} /> {item}</li>)}
       </ul>
     </section>
   );
 }
 
 function CollectionPage({ setRoute, products }) {
-  const [filterOpen, setFilterOpen] = useState(false);
   const [active, setActive] = useState("All");
-  const list = useMemo(() => products.concat(products.slice(0, 8)), []);
+  const brandOptions = useMemo(() => ["All", ...getBrands(products)], [products]);
+  const list = useMemo(() => products.filter((product) => matchesBrand(product, active)), [active, products]);
+  const heroProduct = products[0];
   return (
     <>
       <section className="collectionHero dodoHero">
         <div>
-          <h1>DODO TECHNOLOGIES <span>Phones</span></h1>
+          <h1>{STORE_NAME} <span>Phones</span></h1>
           <strong>iPhone, Samsung, Pixel</strong><b>|</b><strong>WhatsApp support</strong><b>|</b><strong>{DISPLAY_PHONE}</strong>
         </div>
-        <div className="heroTrust">Clean stock <Star weight="fill" /> Fast replies</div>
-        <img src={imageSrc("dodo-pixel.png")} alt="" />
+        <div className="heroTrust">{products.length} backend listings <Star weight="fill" /> Fast replies</div>
+        {heroProduct?.[3] && <img src={imageSrc(heroProduct[3])} alt="" />}
       </section>
-      <div className="mobileFilter">
-        <button onClick={() => setFilterOpen(true)}><Funnel size={18} /> Filters</button>
-        <button><SlidersHorizontal size={18} /> Best Deals</button>
-      </div>
       <main className="collectionLayout">
-        <aside className={`filters ${filterOpen ? "open" : ""}`}>
-          <button className="close mobileOnly" onClick={() => setFilterOpen(false)}><X /></button>
-          <h3>PRICE RANGE</h3>
-          <div className="priceInputs"><span>Rwf 250,000</span><span>Rwf 1,700,000</span></div>
-          <input type="range" min="250000" max="1700000" defaultValue="760000" />
-          {filters.map((item) => <details key={item}><summary>{item}<Plus size={16} /></summary><label><input type="checkbox" /> Pro Max</label><label><input type="checkbox" /> 128GB</label></details>)}
-        </aside>
         <section className="collectionProducts">
           <div className="brandRow">
-            {["All", "iPhone", "Samsung", "Pixel", "Flagship", "Budget"].map((brand) => <button className={active === brand ? "active" : ""} onClick={() => setActive(brand)} key={brand}>{brand}</button>)}
-            <select aria-label="Sort"><option>Best Deals</option><option>Lowest Price</option><option>Newest Phones</option></select>
+            {brandOptions.map((brand) => <button className={active === brand ? "active" : ""} onClick={() => setActive(brand)} key={brand}>{brand}</button>)}
           </div>
           <div className="productGrid">
-            {list.map((p, i) => <ProductCard product={p} key={`${p[0]}-${i}`} onView={() => setRoute("product")} />)}
+            {list.map((p, i) => <ProductCard product={p} key={`${p[5] || p[0]}-${i}`} onView={() => setRoute("product")} />)}
+            {list.length === 0 && <div className="emptyCollection"><h3>No matching backend products</h3><p>Add stock in admin or choose another brand.</p></div>}
           </div>
-          <div className="pagination">{[1, 2, 3, 4].map((n) => <button className={n === 1 ? "active" : ""} key={n}>{n}</button>)}<button><CaretRight /></button></div>
         </section>
       </main>
       <PromiseBand />
@@ -339,25 +392,29 @@ function CollectionPage({ setRoute, products }) {
 }
 
 function ProductPage({ products }) {
-  const [qty, setQty] = useState(1);
   const p = products[0];
+  if (!p) {
+    return (
+      <main className="simplePage">
+        <h1>No product selected</h1>
+        <p>No backend product is available yet. Add a real phone in admin to populate this page.</p>
+      </main>
+    );
+  }
   return (
     <main className="productPage">
       <section className="gallery">
-        <img src={imageSrc(p[3])} alt={p[0]} />
-        <div>{[p[3], "dodo-samsung.png", "dodo-pixel.png"].map((img) => <button key={img}><img src={imageSrc(img)} alt="" /></button>)}</div>
+        {p[3] ? <img src={imageSrc(p[3])} alt={p[0]} /> : <span className="imageMissing large">No image</span>}
+        <div>{[p[3]].filter(Boolean).map((img) => <button key={img}><img src={imageSrc(img)} alt="" /></button>)}</div>
       </section>
       <section className="purchase">
-        <p className="crumb">Home / Phones / DODO TECHNOLOGIES</p>
+        <p className="crumb">Home / Phones / {STORE_NAME}</p>
         <h1>{p[0]}</h1>
         <p>{p[1]}</p>
         <div className="rating">Condition and availability confirmed on WhatsApp</div>
         <h2>{currency(p[2])}</h2>
-        <div className="optionGroup"><b>Condition</b>{["Excellent", "Very Good", "Good"].map((x) => <button key={x}>{x}</button>)}</div>
-        <div className="optionGroup"><b>Storage</b>{["128GB", "256GB", "512GB"].map((x) => <button key={x}>{x}</button>)}</div>
-        <div className="quantity"><button onClick={() => setQty(Math.max(1, qty - 1))}><Minus /></button><span>{qty}</span><button onClick={() => setQty(qty + 1)}><Plus /></button></div>
+        <div className="optionGroup"><b>Backend specs</b><button>{p[1]}</button><button>{productBrand(p)}</button></div>
         <a className="primary wide whatsappCta" href={whatsappUrl(p)} target="_blank" rel="noreferrer"><WhatsappLogo size={20} weight="fill" /> Chat on WhatsApp</a>
-        <button className="secondary wide"><Heart size={18} /> Save phone</button>
         <PromiseBand />
       </section>
     </main>
@@ -365,17 +422,18 @@ function ProductPage({ products }) {
 }
 
 function SimplePage({ kind, products }) {
+  const featured = products[0];
   const copy = {
-    help: ["Help Center", "Ask DODO TECHNOLOGIES about stock, battery health, delivery, collection, and payment on WhatsApp."],
+    help: ["Help Center", `Ask ${STORE_NAME} about stock, battery health, delivery, collection, and payment on WhatsApp.`],
     deals: ["Phone Deals", "Only iPhones, Samsung Galaxy, and Google Pixel. Tap any WhatsApp button to send the phone details."],
-    sell: ["WhatsApp DODO TECHNOLOGIES", `Send the phone model you want and we will reply from ${DISPLAY_PHONE}.`],
-  }[kind] || ["About DODO TECHNOLOGIES", "A phone shop for iPhone, Samsung Galaxy, and Google Pixel with simple listings and direct WhatsApp enquiries."];
+    sell: [`WhatsApp ${STORE_NAME}`, `Send the phone model you want and we will reply from ${DISPLAY_PHONE}.`],
+  }[kind] || [`About ${STORE_NAME}`, "A phone shop for iPhone, Samsung Galaxy, and Google Pixel with simple listings and direct WhatsApp enquiries."];
   return (
     <main className="simplePage">
       <h1>{copy[0]}</h1>
       <p>{copy[1]}</p>
       <div className="supportGrid">
-        {["Check availability", "Ask for photos", "Confirm battery health", "Chat on WhatsApp"].map((item) => <a key={item} href={whatsappUrl(products[0])} target="_blank" rel="noreferrer">{item}<CaretRight /></a>)}
+        {["Check availability", "Ask for photos", "Confirm battery health", "Chat on WhatsApp"].map((item) => <a key={item} href={whatsappUrl(featured)} target="_blank" rel="noreferrer">{item}<CaretRight /></a>)}
       </div>
       <PromiseBand />
     </main>
@@ -385,40 +443,138 @@ function SimplePage({ kind, products }) {
 function InfoCopy() {
   return (
     <section className="infoCopy">
-      <h2>Explore DODO TECHNOLOGIES Phone Deals</h2>
-      <p>DODO TECHNOLOGIES focuses on iPhones, Samsung Galaxy, and Google Pixel phones, making it easier to compare model, storage, color, condition, and price without unrelated products.</p>
+      <h2>Explore {STORE_NAME} Phone Deals</h2>
+      <p>{STORE_NAME} focuses on iPhones, Samsung Galaxy, and Google Pixel phones, making it easier to compare model, storage, color, condition, and price without unrelated products.</p>
       <p>When a client likes a phone, the WhatsApp button opens a chat with the phone name, simple specs, and listed price already prepared.</p>
     </section>
   );
 }
 
 function Footer({ products }) {
+  const featured = products[0];
   return (
     <footer className="footer">
-      <div><h3>DODO TECHNOLOGIES</h3><a>iPhone, Samsung, Pixel</a><a>Customer support</a><a>WhatsApp {DISPLAY_PHONE}</a><a href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram @{INSTAGRAM}</a></div>
-      <div><h3>SHOP</h3><a>iPhones</a><a>Samsung Galaxy</a><a>Google Pixel</a><a>Budget Phones</a></div>
-      <div><h3>HELP</h3><a>Battery health</a><a>Condition photos</a><a>Availability</a><a className="footerWhatsapp" href={whatsappUrl(products[0])} target="_blank" rel="noreferrer">CONTACT ON WHATSAPP</a></div>
-      <form><h3>Get phone deal updates.</h3><input placeholder="Enter your email" /><button>Subscribe</button><p>Or message {DISPLAY_PHONE} for faster help.</p></form>
+      <div><h3>{STORE_NAME}</h3><a>iPhone, Samsung, Pixel</a><a>Customer support</a><a>WhatsApp {DISPLAY_PHONE}</a><a href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram @{INSTAGRAM}</a></div>
+      <div><h3>SHOP</h3><a>All phones</a><a>Deals</a><a>Warranty</a><a>Admin</a></div>
+      <div><h3>CONTACT</h3><a>Battery health</a><a>Condition photos</a><a>Availability</a><a className="footerWhatsapp" href={whatsappUrl(featured)} target="_blank" rel="noreferrer">CONTACT ON WHATSAPP</a></div>
     </footer>
   );
 }
 
-function AdminPanel({ adminProducts, addAdminProduct, removeAdminProduct, setRoute }) {
-  const [draft, setDraft] = useState({
+function AdminLogin({ configured, onLogin }) {
+  const [credentials, setCredentials] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
+  const submit = async (event) => {
+    event.preventDefault();
+    setError("");
+    const response = await fetch("/api/admin-auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setError(data.error || "Admin login failed.");
+      return;
+    }
+    onLogin();
+  };
+
+  return (
+    <main className="adminPage">
+      <section className="adminHero loginHero">
+        <div>
+          <p className="heroBrand">{STORE_NAME} ADMIN</p>
+          <h1>Admin login required</h1>
+          <p>Product uploads and removals are protected by a server-side admin session.</p>
+        </div>
+      </section>
+      <form className="loginCard" onSubmit={submit}>
+        {!configured && <p className="formError">Set ADMIN_USERNAME, ADMIN_PASSWORD, and ADMIN_SESSION_SECRET in the environment first.</p>}
+        <label>
+          Username
+          <input value={credentials.username} onChange={(event) => setCredentials((current) => ({ ...current, username: event.target.value }))} autoComplete="username" />
+        </label>
+        <label>
+          Password
+          <input type="password" value={credentials.password} onChange={(event) => setCredentials((current) => ({ ...current, password: event.target.value }))} autoComplete="current-password" />
+        </label>
+        {error && <p className="formError">{error}</p>}
+        <button className="primary wide" type="submit" disabled={!configured}>Log in</button>
+      </form>
+    </main>
+  );
+}
+
+function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, removeAdminProduct, setRoute, onLogout }) {
+  const emptyDraft = {
+    id: "",
     name: "",
     brand: "iPhone",
     specs: "",
     price: "",
-    image: "",
+    imageFile: null,
+    imagePreview: "",
+    existingImage: "",
     tag: "New Stock",
-  });
+    featured: false,
+  };
+  const [draft, setDraft] = useState(emptyDraft);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [mode, setMode] = useState("add");
+  const [brandSearch, setBrandSearch] = useState(emptyDraft.brand);
   const [error, setError] = useState("");
+  const brandOptions = useMemo(() => [...new Set([...BASE_BRANDS, ...adminProducts.map(productBrand).filter(Boolean)])].sort(), [adminProducts]);
+  const filteredBrands = brandOptions.filter((brand) => brand.toLowerCase().includes(brandSearch.toLowerCase()));
+  const imagePreview = draft.imagePreview || draft.existingImage;
+
   const update = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
-  const submit = (event) => {
+  const openAdd = () => {
+    setMode("add");
+    setDraft(emptyDraft);
+    setBrandSearch(emptyDraft.brand);
+    setError("");
+    setPanelOpen(true);
+  };
+  const openEdit = (product) => {
+    setMode("edit");
+    setDraft({
+      id: product[5],
+      name: product[0],
+      brand: productBrand(product),
+      specs: product[1],
+      price: String(product[2]),
+      imageFile: null,
+      imagePreview: "",
+      existingImage: product[3],
+      tag: product[4],
+      featured: isFeatured(product),
+    });
+    setBrandSearch(productBrand(product));
+    setError("");
+    setPanelOpen(true);
+  };
+  const closePanel = () => {
+    setPanelOpen(false);
+    setError("");
+    setDraft(emptyDraft);
+  };
+  const updateImage = (file) => {
+    setDraft((current) => ({
+      ...current,
+      imageFile: file,
+      imagePreview: file ? URL.createObjectURL(file) : "",
+    }));
+  };
+  const chooseBrand = (brand) => {
+    setBrandSearch(brand);
+    update("brand", brand);
+  };
+  const submit = async (event) => {
     event.preventDefault();
     const price = Number(String(draft.price).replaceAll(",", ""));
     if (!draft.name.trim()) {
-      setError("Add the phone model name.");
+      setError("Add or select the phone model.");
       return;
     }
     if (!draft.specs.trim()) {
@@ -429,140 +585,249 @@ function AdminPanel({ adminProducts, addAdminProduct, removeAdminProduct, setRou
       setError("Add a valid RWF price.");
       return;
     }
-    if (!draft.image.trim() || !draft.image.startsWith("http")) {
-      setError("Paste a Cloudinary image URL starting with https://.");
+    if (mode === "add" && !draft.imageFile) {
+      setError("Choose a phone image.");
       return;
     }
-    addAdminProduct([
-      draft.name.trim(),
-      draft.specs.trim(),
-      price,
-      draft.image.trim(),
-      draft.tag.trim() || draft.brand,
-    ]);
-    setDraft({ name: "", brand: draft.brand, specs: "", price: "", image: "", tag: "New Stock" });
-    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("name", draft.name.trim());
+      formData.append("brand", draft.brand);
+      formData.append("specs", draft.specs.trim());
+      formData.append("price", String(price));
+      formData.append("tag", draft.tag.trim() || draft.brand);
+      formData.append("featured", String(draft.featured));
+      if (draft.imageFile) formData.append("image", draft.imageFile);
+
+      if (mode === "edit") {
+        await updateAdminProduct(draft.id, formData);
+      } else {
+        await addAdminProduct(formData);
+      }
+      closePanel();
+    } catch {
+      setError(mode === "edit" ? "The backend could not update this phone. Try again." : "The backend could not save this phone. Try again.");
+    }
   };
 
   return (
     <main className="adminPage">
       <section className="adminHero">
         <div>
-          <p className="heroBrand">DODO TECHNOLOGIES ADMIN</p>
-          <h1>Upload new phones</h1>
-          <p>Paste a Cloudinary-hosted image URL, add the phone details, and the listing appears in the shop immediately.</p>
+          <p className="heroBrand">{STORE_NAME} ADMIN</p>
+          <h1>Inventory control</h1>
+          <p>Manage phone stock, featured homepage banners, Cloudinary images, prices, and product details.</p>
         </div>
-        <button className="secondary" onClick={() => setRoute("home")}>View shop</button>
-      </section>
-
-      <section className="adminLayout">
-        <form className="adminForm" onSubmit={submit}>
-          <label>
-            Phone name
-            <input value={draft.name} onChange={(event) => update("name", event.target.value)} placeholder="Samsung Galaxy S24 Ultra" />
-          </label>
-          <label>
-            Brand
-            <select value={draft.brand} onChange={(event) => update("brand", event.target.value)}>
-              <option>iPhone</option>
-              <option>Samsung Galaxy</option>
-              <option>Google Pixel</option>
-            </select>
-          </label>
-          <label>
-            Simple specs
-            <input value={draft.specs} onChange={(event) => update("specs", event.target.value)} placeholder="256GB, Titanium Gray, Dual SIM" />
-          </label>
-          <label>
-            Price in RWF
-            <input inputMode="numeric" value={draft.price} onChange={(event) => update("price", event.target.value)} placeholder="1380000" />
-          </label>
-          <label>
-            Cloudinary image URL
-            <input value={draft.image} onChange={(event) => update("image", event.target.value)} placeholder="https://res.cloudinary.com/.../phone.jpg" />
-          </label>
-          <label>
-            Badge
-            <input value={draft.tag} onChange={(event) => update("tag", event.target.value)} placeholder="New Stock" />
-          </label>
-          {error && <p className="formError">{error}</p>}
-          <button className="primary wide" type="submit"><Plus size={18} /> Add phone</button>
-        </form>
-
-        <aside className="adminPreview">
-          <h2>Preview</h2>
-          <ProductCard
-            product={[
-              draft.name || "Phone model",
-              draft.specs || "Storage, color, SIM status",
-              Number(draft.price) || 0,
-              draft.image || "dodo-samsung.png",
-              draft.tag || "New Stock",
-            ]}
-            onView={() => {}}
-          />
-          <div className="adminTip">
-            <strong>Cloudinary workflow</strong>
-            <p>Upload the phone photo to Cloudinary, copy the secure image URL, then paste it into the image field.</p>
-          </div>
-        </aside>
+        <div className="adminHeroActions">
+          <button className="primary" onClick={openAdd}><Plus size={18} /> Add phone</button>
+          <button className="secondary" onClick={() => setRoute("home")}>View shop</button>
+          <button className="secondary" onClick={onLogout}>Log out</button>
+        </div>
       </section>
 
       <section className="adminInventory">
         <div className="sectionHead">
-          <h2>Admin-added phones</h2>
-          <span>{adminProducts.length} saved locally</span>
+          <h2>Inventory list</h2>
+          <span>{adminProducts.length} saved in MongoDB</span>
         </div>
         {adminProducts.length === 0 ? (
-          <p className="emptyState">No admin phones yet. Add one with a Cloudinary URL to see it here and in the shop.</p>
+          <div className="emptyInventory">
+            <h3>No phones yet</h3>
+            <p>Add the first phone to populate the storefront.</p>
+            <button className="primary" onClick={openAdd}>Add phone</button>
+          </div>
         ) : (
           <div className="adminList">
             {adminProducts.map((product, index) => (
-              <article className="adminRow" key={`${product[0]}-${index}`}>
+              <article className="adminRow" key={`${product[5] || product[0]}-${index}`}>
                 <img src={imageSrc(product[3])} alt="" />
                 <div>
                   <strong>{product[0]}</strong>
                   <small>{product[1]}</small>
                   <b>{currency(product[2])}</b>
                 </div>
-                <a href={whatsappUrl(product)} target="_blank" rel="noreferrer">Test WhatsApp</a>
-                <button onClick={() => removeAdminProduct(index)}>Remove</button>
+                {isFeatured(product) && <span className="featuredPill">Featured</span>}
+                <button onClick={() => openEdit(product)}>Edit</button>
+                <a href={whatsappUrl(product)} target="_blank" rel="noreferrer">WhatsApp</a>
+                <button className="dangerButton" onClick={() => removeAdminProduct(product[5]).catch(() => setError("The backend could not remove this phone. Try again."))}>Remove</button>
               </article>
             ))}
           </div>
         )}
       </section>
+
+      {panelOpen && (
+        <aside className="adminEditorOverlay">
+          <form className="adminEditor" onSubmit={submit}>
+            <div className="adminEditorHead">
+              <div>
+                <p className="heroBrand">{mode === "edit" ? "EDIT PHONE" : "ADD PHONE"}</p>
+                <h2>{mode === "edit" ? "Update listing" : "New listing"}</h2>
+              </div>
+              <button className="close" type="button" onClick={closePanel} aria-label="Close editor"><X size={18} /></button>
+            </div>
+
+            <div className="adminEditorGrid">
+              <section className="adminForm">
+                <label>
+                  Model
+                  <input value={draft.name} onChange={(event) => update("name", event.target.value)} placeholder="iPhone 15 Pro Max" />
+                </label>
+                <label className="brandSelect">
+                  Brand
+                  <input value={brandSearch} onChange={(event) => { setBrandSearch(event.target.value); update("brand", event.target.value); }} placeholder="Search brand" />
+                  {filteredBrands.length > 0 && (
+                    <div className="brandOptions">
+                      {filteredBrands.map((brand) => <button type="button" key={brand} onClick={() => chooseBrand(brand)}>{brand}</button>)}
+                    </div>
+                  )}
+                </label>
+                <label>
+                  Simple specs
+                  <input value={draft.specs} onChange={(event) => update("specs", event.target.value)} placeholder="256GB, Titanium Gray, Dual SIM" />
+                </label>
+                <label>
+                  Price in RWF
+                  <input inputMode="numeric" value={draft.price} onChange={(event) => update("price", event.target.value)} placeholder="1380000" />
+                </label>
+                <label>
+                  Badge
+                  <input value={draft.tag} onChange={(event) => update("tag", event.target.value)} placeholder="New Stock" />
+                </label>
+                <label className="featureToggle">
+                  <input type="checkbox" checked={draft.featured} onChange={(event) => update("featured", event.target.checked)} />
+                  <span>Feature this phone on the homepage banner</span>
+                </label>
+                <label className="imagePicker">
+                  <input type="file" accept="image/*" onChange={(event) => updateImage(event.target.files?.[0] || null)} />
+                  <span>
+                    <strong>{draft.imageFile ? draft.imageFile.name : imagePreview ? "Change image" : "Choose product image"}</strong>
+                    <small>PNG, JPG, or WebP. Stored through Cloudinary.</small>
+                  </span>
+                </label>
+                {error && <p className="formError">{error}</p>}
+                <div className="adminEditorActions">
+                  <button className="secondary" type="button" onClick={closePanel}>Cancel</button>
+                  <button className="primary" type="submit">{mode === "edit" ? "Save changes" : "Add phone"}</button>
+                </div>
+              </section>
+
+              <aside className="adminPreview">
+                <h3>Live preview</h3>
+                <ProductCard
+                  product={[
+                    draft.name || "Phone model",
+                    draft.specs || "Storage, color, SIM status",
+                    Number(draft.price) || 0,
+                    imagePreview,
+                    draft.tag || "New Stock",
+                    draft.id || "preview",
+                    "preview",
+                    draft.brand,
+                    draft.featured,
+                  ]}
+                  onView={() => {}}
+                />
+              </aside>
+            </div>
+          </form>
+        </aside>
+      )}
     </main>
   );
 }
 
 export function App() {
   const [route, setRoute] = useState("home");
-  const [adminProducts, setAdminProducts] = useState(loadAdminProducts);
-  const allProducts = useMemo(() => [...adminProducts, ...products], [adminProducts]);
+  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [adminProducts, setAdminProducts] = useState([]);
+  const [databaseReady, setDatabaseReady] = useState(true);
+  const [backendError, setBackendError] = useState("");
+  const [adminSession, setAdminSession] = useState({ authenticated: false, configured: true, checked: false });
+  const demoMode = catalogProducts.length === 0;
+  const allProducts = useMemo(() => catalogProducts.length > 0 ? catalogProducts : DEMO_PRODUCTS, [catalogProducts]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/products")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setCatalogProducts(Array.isArray(data.products) ? data.products : []);
+        setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
+        setDatabaseReady(Boolean(data.databaseReady));
+        setBackendError(data.error || "");
+      })
+      .catch(() => {
+        if (!active) return;
+        setCatalogProducts([]);
+        setAdminProducts([]);
+        setDatabaseReady(false);
+        setBackendError("The products API did not respond.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const refreshAdminSession = async () => {
+    const response = await fetch("/api/admin-auth/session");
+    const data = await response.json();
+    setAdminSession({ authenticated: Boolean(data.authenticated), configured: Boolean(data.configured), checked: true });
+  };
+
+  useEffect(() => {
+    refreshAdminSession().catch(() => setAdminSession({ authenticated: false, configured: false, checked: true }));
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
 
-  const addAdminProduct = (product) => {
-    const nextProducts = [product, ...adminProducts];
-    setAdminProducts(nextProducts);
-    saveAdminProducts(nextProducts);
+  const addAdminProduct = async (formData) => {
+    const response = await fetch("/api/admin-products", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) throw new Error("Unable to add phone.");
+    const data = await response.json();
+    setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
+    setCatalogProducts(Array.isArray(data.products) ? data.products : []);
   };
-  const removeAdminProduct = (index) => {
-    const nextProducts = adminProducts.filter((_, itemIndex) => itemIndex !== index);
-    setAdminProducts(nextProducts);
-    saveAdminProducts(nextProducts);
+  const updateAdminProduct = async (id, formData) => {
+    const response = await fetch(`/api/admin-products?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: formData,
+    });
+    if (!response.ok) throw new Error("Unable to update phone.");
+    const data = await response.json();
+    setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
+    setCatalogProducts(Array.isArray(data.products) ? data.products : []);
+  };
+  const removeAdminProduct = async (id) => {
+    const response = await fetch(`/api/admin-products?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Unable to remove phone.");
+    const data = await response.json();
+    setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
+    setCatalogProducts(Array.isArray(data.products) ? data.products : []);
+  };
+  const logoutAdmin = async () => {
+    await fetch("/api/admin-auth/logout", { method: "POST" });
+    setAdminSession((current) => ({ ...current, authenticated: false }));
+    setRoute("home");
   };
   const page = route === "collection"
     ? <CollectionPage setRoute={setRoute} products={allProducts} />
     : route === "product"
       ? <ProductPage products={allProducts} />
       : route === "admin"
-        ? <AdminPanel adminProducts={adminProducts} addAdminProduct={addAdminProduct} removeAdminProduct={removeAdminProduct} setRoute={setRoute} />
+        ? adminSession.authenticated
+          ? <AdminPanel adminProducts={adminProducts} addAdminProduct={addAdminProduct} updateAdminProduct={updateAdminProduct} removeAdminProduct={removeAdminProduct} setRoute={setRoute} onLogout={logoutAdmin} />
+          : <AdminLogin configured={adminSession.configured} onLogin={refreshAdminSession} />
         : route === "home"
-          ? <HomePage setRoute={setRoute} products={allProducts} />
+          ? <HomePage setRoute={setRoute} products={allProducts} databaseReady={databaseReady} backendError={backendError} demoMode={demoMode} />
           : <SimplePage kind={route} products={allProducts} />;
   return (
     <>
