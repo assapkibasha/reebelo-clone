@@ -2,13 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  CaretLeft,
   CaretRight,
   CheckCircle,
   List,
   MagnifyingGlass,
-  Pause,
-  Play,
   Plus,
   Star,
   WhatsappLogo,
@@ -19,26 +16,26 @@ const A = "/assets/";
 const STORE_NAME = "KG Phone Store";
 const WHATSAPP_NUMBER = "250784616862";
 const DISPLAY_PHONE = "+250 784 616 862";
-const INSTAGRAM = "nidodos";
+const TIKTOK_HANDLE = "kgphones";
+const TIKTOK_URL = `https://www.tiktok.com/@${TIKTOK_HANDLE}`;
 
 const nav = [
   { label: "All phones", route: "collection" },
   { label: "Deals", route: "deals" },
   { label: "Warranty", route: "help" },
-  { label: "Admin", route: "admin" },
-  { label: "Instagram", href: `https://instagram.com/${INSTAGRAM}` },
+  { label: "TikTok", href: TIKTOK_URL },
 ];
 
 const BASE_BRANDS = ["iPhone", "Samsung", "Samsung Galaxy", "Pixel", "Google Pixel"];
 
 const DEMO_PRODUCTS = [
-  ["iPhone 15 Pro Max", "256GB, Natural Titanium, 93% battery, unlocked", 1280000, "iphone-79.png", "Demo stock", "demo-iphone-15-pro-max", "demo", "iPhone"],
-  ["iPhone 14 Pro", "128GB, Deep Purple, 90% battery, unlocked", 870000, "iphone-27.png", "Demo deal", "demo-iphone-14-pro", "demo", "iPhone"],
-  ["Samsung Galaxy S24 Ultra", "256GB, Titanium Gray, dual SIM, clean box", 1360000, "dodo-samsung.png", "Demo flagship", "demo-s24-ultra", "demo", "Samsung"],
+  ["iPhone 15 Pro Max", "256GB, Natural Titanium, 93% battery, unlocked", 1280000, "kg-demo-iphone.png", "Demo stock", "demo-iphone-15-pro-max", "demo", "iPhone"],
+  ["iPhone 14 Pro", "128GB, Deep Purple, 90% battery, unlocked", 870000, "kg-demo-iphone.png", "Demo deal", "demo-iphone-14-pro", "demo", "iPhone"],
+  ["Samsung Galaxy S24 Ultra", "256GB, Titanium Gray, dual SIM, clean box", 1360000, "kg-demo-samsung.png", "Demo flagship", "demo-s24-ultra", "demo", "Samsung"],
   ["Samsung Galaxy S23", "256GB, Phantom Black, dual SIM, excellent", 790000, "phones-49.png", "Demo pick", "demo-s23", "demo", "Samsung"],
-  ["Google Pixel 8 Pro", "128GB, Obsidian, unlocked, excellent camera", 760000, "dodo-pixel.png", "Demo camera", "demo-pixel-8-pro", "demo", "Pixel"],
+  ["Google Pixel 8 Pro", "128GB, Obsidian, unlocked, excellent camera", 760000, "kg-demo-pixel.png", "Demo camera", "demo-pixel-8-pro", "demo", "Pixel"],
   ["Google Pixel 7", "128GB, Snow, unlocked, clean condition", 420000, "smartphones-40.png", "Demo value", "demo-pixel-7", "demo", "Pixel"],
-  ["iPhone 13", "128GB, Midnight, 89% battery, unlocked", 520000, "dodo-iphone.png", "Demo budget", "demo-iphone-13", "demo", "iPhone"],
+  ["iPhone 13", "128GB, Midnight, 89% battery, unlocked", 520000, "kg-demo-iphone.png", "Demo budget", "demo-iphone-13", "demo", "iPhone"],
   ["Samsung Galaxy A55", "128GB, Ice Blue, dual SIM, like new", 430000, "smartphones-16.png", "Demo budget", "demo-a55", "demo", "Samsung"],
 ];
 
@@ -48,7 +45,9 @@ function currency(value) {
 
 function imageSrc(img) {
   if (!img) return "";
-  return img.startsWith("http") || img.startsWith("data:") ? img : `${A}${img}`;
+  if (img.startsWith("http") || img.startsWith("data:")) return img;
+  const legacyPrefix = ["do", "do-"].join("");
+  return `${A}${img.replace(new RegExp(`^${legacyPrefix}`), "kg-demo-")}`;
 }
 
 function whatsappUrl(product) {
@@ -97,9 +96,9 @@ function matchesBrand(product, active) {
   return productBrand(product).toLowerCase().includes(active.toLowerCase());
 }
 
-function AppLogo({ compact = false }) {
+function AppLogo({ compact = false, onHome }) {
   return (
-    <button className={`logo ${compact ? "compact" : ""}`} onClick={() => { location.hash = "#/"; }}>
+    <button className={`logo ${compact ? "compact" : ""}`} onClick={onHome}>
       <span className="logoMain">KG</span>
       <span className="logoSub">PHONE STORE</span>
     </button>
@@ -116,7 +115,7 @@ function Header({ setRoute, products }) {
       <header className="topbar">
         <div className="topline">
           <button className="menuButton" onClick={() => setMenu(true)} aria-label="Open menu"><List size={22} /></button>
-          <AppLogo />
+          <AppLogo onHome={() => go("home")} />
           <button className="search" onClick={() => setSearch(true)}>
             <span>Search phone model, color, storage...</span>
             <MagnifyingGlass size={24} />
@@ -133,12 +132,22 @@ function Header({ setRoute, products }) {
 
 function MenuDrawer({ onClose, go, products }) {
   const categories = getCategoryProducts(products);
+  const featured = products[0];
   return (
     <aside className="overlay">
       <div className="drawer leftDrawer">
-        <button className="close" onClick={onClose} aria-label="Close menu"><X size={20} /></button>
-        <AppLogo compact />
-        <h2>Menu</h2>
+        <div className="drawerHead">
+          <AppLogo compact onHome={() => { go("home"); onClose(); }} />
+          <button className="close" onClick={onClose} aria-label="Close menu"><X size={20} /></button>
+        </div>
+        <div className="drawerIntro">
+          <h2>Shop phones</h2>
+          <p>iPhone, Samsung Galaxy, and Pixel stock with quick WhatsApp help.</p>
+        </div>
+        <div className="drawerActions">
+          <a href={whatsappUrl(featured)} target="_blank" rel="noreferrer"><WhatsappLogo size={18} weight="fill" /> WhatsApp</a>
+          <a href={TIKTOK_URL} target="_blank" rel="noreferrer">TikTok @{TIKTOK_HANDLE}</a>
+        </div>
         <div className="drawerNav">
           {nav.map((item) => item.href ? (
             <a className="drawerLink" href={item.href} target="_blank" rel="noreferrer" key={item.label}>{item.label}<CaretRight /></a>
@@ -196,50 +205,19 @@ function TrustBar() {
 }
 
 function Hero({ products, demoMode }) {
-  const featuredProducts = products.filter(isFeatured);
-  const slides = featuredProducts.length > 0 ? featuredProducts : products.slice(0, 1);
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const product = slides[active] || products[0];
-  const image = imageSrc(product?.[3]);
-
-  useEffect(() => {
-    setActive(0);
-  }, [slides.length]);
-
-  useEffect(() => {
-    if (slides.length < 2 || paused) return undefined;
-    const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), 5500);
-    return () => window.clearInterval(timer);
-  }, [paused, slides.length]);
-
-  const previousSlide = () => setActive((current) => (current - 1 + slides.length) % slides.length);
-  const nextSlide = () => setActive((current) => (current + 1) % slides.length);
+  const product = products.find(isFeatured) || products[0];
 
   return (
     <section className="hero">
-      {image && <img className="heroLeft" src={image} alt="" />}
+      <img className="heroImage" src="/assets/kg-phones-hero.png" alt="Smiling KG Phones customer holding shopping bags in a phone store" />
+      <div className="heroVeil" aria-hidden="true" />
       <div className="heroCopy">
         <p className="heroBrand">{STORE_NAME}</p>
-        <h1>{product ? "Premium phones. Clear prices. Fast WhatsApp." : "Backend inventory required"}</h1>
-        <p>{product ? `${product[0]} is featured in this ${demoMode ? "demo preview" : "live inventory"} view.` : "Add real phones in admin to populate the storefront."}</p>
+        <h1>Smart phones. Clear prices. Fast replies.</h1>
+        <p>{product ? `Ask about ${product[0]} or browse current iPhone, Samsung Galaxy, and Pixel stock.` : "Browse current iPhone, Samsung Galaxy, and Pixel stock with direct WhatsApp support."}</p>
         <a className="primary whatsappCta" href={whatsappUrl(product)} target="_blank" rel="noreferrer"><WhatsappLogo size={20} weight="fill" /> Ask on WhatsApp</a>
       </div>
-      {image && <img className="heroRight" src={image} alt="" />}
-      {slides.length > 1 && (
-        <div className="heroControls" aria-label="Featured phones">
-          <button className="heroArrow" onClick={previousSlide} aria-label="Previous featured phone"><CaretLeft size={18} /></button>
-          <button className="heroPlay" onClick={() => setPaused((current) => !current)} aria-label={paused ? "Play featured carousel" : "Pause featured carousel"}>
-            {paused ? <Play size={15} weight="fill" /> : <Pause size={15} weight="fill" />}
-          </button>
-          <div className="heroDots">
-            {slides.map((slide, index) => (
-              <button className={active === index ? "active" : ""} key={slide[5] || slide[0]} onClick={() => setActive(index)} aria-label={`Show ${slide[0]}`} />
-            ))}
-          </div>
-          <button className="heroArrow" onClick={nextSlide} aria-label="Next featured phone"><CaretRight size={18} /></button>
-        </div>
-      )}
+      {demoMode && <span className="heroNote">Preview stock shown until backend inventory is added.</span>}
     </section>
   );
 }
@@ -321,7 +299,7 @@ function EmptyInventory({ setRoute }) {
     <div className="emptyInventory">
       <h3>No backend inventory yet</h3>
       <p>The storefront will stay empty until MongoDB returns real phone records.</p>
-      <button className="primary" onClick={() => setRoute("admin")}>Open admin</button>
+      <a className="primary" href="/kg-admin">Open stock room</a>
     </div>
   );
 }
@@ -370,7 +348,7 @@ function CollectionPage({ setRoute, products }) {
   const heroProduct = products[0];
   return (
     <>
-      <section className="collectionHero dodoHero">
+      <section className="collectionHero storeHero">
         <div>
           <h1>{STORE_NAME} <span>Phones</span></h1>
           <strong>iPhone, Samsung, Pixel</strong><b>|</b><strong>WhatsApp support</strong><b>|</b><strong>{DISPLAY_PHONE}</strong>
@@ -385,7 +363,7 @@ function CollectionPage({ setRoute, products }) {
           </div>
           <div className="productGrid">
             {list.map((p, i) => <ProductCard product={p} key={`${p[5] || p[0]}-${i}`} onView={() => setRoute("product")} />)}
-            {list.length === 0 && <div className="emptyCollection"><h3>No matching backend products</h3><p>Add stock in admin or choose another brand.</p></div>}
+            {list.length === 0 && <div className="emptyCollection"><h3>No matching backend products</h3><p>Add stock in the protected stock room or choose another brand.</p></div>}
           </div>
         </section>
       </main>
@@ -401,7 +379,7 @@ function ProductPage({ products }) {
     return (
       <main className="simplePage">
         <h1>No product selected</h1>
-        <p>No backend product is available yet. Add a real phone in admin to populate this page.</p>
+        <p>No backend product is available yet. Add a real phone in the protected stock room to populate this page.</p>
       </main>
     );
   }
@@ -458,8 +436,8 @@ function Footer({ products }) {
   const featured = products[0];
   return (
     <footer className="footer">
-      <div><h3>{STORE_NAME}</h3><a>iPhone, Samsung, Pixel</a><a>Customer support</a><a>WhatsApp {DISPLAY_PHONE}</a><a href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram @{INSTAGRAM}</a></div>
-      <div><h3>SHOP</h3><a>All phones</a><a>Deals</a><a>Warranty</a><a>Admin</a></div>
+      <div><h3>{STORE_NAME}</h3><a>iPhone, Samsung, Pixel</a><a>Customer support</a><a>WhatsApp {DISPLAY_PHONE}</a><a href={TIKTOK_URL} target="_blank" rel="noreferrer">TikTok @{TIKTOK_HANDLE}</a></div>
+      <div><h3>SHOP</h3><a>All phones</a><a>Deals</a><a>Warranty</a><a href={TIKTOK_URL} target="_blank" rel="noreferrer">TikTok</a></div>
       <div><h3>CONTACT</h3><a>Battery health</a><a>Condition photos</a><a>Availability</a><a className="footerWhatsapp" href={whatsappUrl(featured)} target="_blank" rel="noreferrer">CONTACT ON WHATSAPP</a></div>
     </footer>
   );
@@ -780,8 +758,8 @@ function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, remove
   );
 }
 
-export function App() {
-  const [route, setRoute] = useState("home");
+export function App({ initialRoute = "home" }) {
+  const [route, setRoute] = useState(initialRoute);
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [adminProducts, setAdminProducts] = useState([]);
   const [databaseReady, setDatabaseReady] = useState(true);
