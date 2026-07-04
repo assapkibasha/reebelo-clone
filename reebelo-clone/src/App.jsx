@@ -17,8 +17,8 @@ import {
 
 const A = "/assets/";
 const STORE_NAME = "KG Phone Store";
-const WHATSAPP_NUMBER = "250784001835";
-const DISPLAY_PHONE = "+250 784 001 835";
+const WHATSAPP_NUMBER = "250784616862";
+const DISPLAY_PHONE = "+250 784 616 862";
 const INSTAGRAM = "nidodos";
 
 const nav = [
@@ -336,10 +336,14 @@ function BackendNotice({ error }) {
 }
 
 function DemoPreviewNotice({ databaseReady, error }) {
+  const message = databaseReady
+    ? "MongoDB has no products yet, so preview phones are shown for layout visualization."
+    : "The backend connection is temporarily unavailable, so preview phones are shown while the store keeps rendering.";
+
   return (
     <section className="backendNotice demoNotice">
       <strong>Demo data preview</strong>
-      <span>{databaseReady ? "MongoDB has no products yet, so demo phones are shown for layout visualization." : error || "Backend data is unavailable, so demo phones are shown for layout visualization."}</span>
+      <span>{message}</span>
     </section>
   );
 }
@@ -524,6 +528,8 @@ function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, remove
   const [mode, setMode] = useState("add");
   const [brandSearch, setBrandSearch] = useState(emptyDraft.brand);
   const [error, setError] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
   const brandOptions = useMemo(() => [...new Set([...BASE_BRANDS, ...adminProducts.map(productBrand).filter(Boolean)])].sort(), [adminProducts]);
   const filteredBrands = brandOptions.filter((brand) => brand.toLowerCase().includes(brandSearch.toLowerCase()));
   const imagePreview = draft.imagePreview || draft.existingImage;
@@ -558,6 +564,30 @@ function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, remove
     setPanelOpen(false);
     setError("");
     setDraft(emptyDraft);
+  };
+  const requestDelete = async (product) => {
+    const productId = product[5];
+    if (!productId) {
+      setError("This phone cannot be deleted because it has no database id.");
+      return;
+    }
+
+    if (pendingDeleteId !== productId) {
+      setError("");
+      setPendingDeleteId(productId);
+      return;
+    }
+
+    setDeletingId(productId);
+    setError("");
+    try {
+      await removeAdminProduct(productId);
+      setPendingDeleteId("");
+    } catch (removeError) {
+      setError(removeError.message || "The backend could not remove this phone. Try again.");
+    } finally {
+      setDeletingId("");
+    }
   };
   const updateImage = (file) => {
     setDraft((current) => ({
@@ -605,8 +635,8 @@ function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, remove
         await addAdminProduct(formData);
       }
       closePanel();
-    } catch {
-      setError(mode === "edit" ? "The backend could not update this phone. Try again." : "The backend could not save this phone. Try again.");
+    } catch (submitError) {
+      setError(submitError.message || (mode === "edit" ? "The backend could not update this phone. Try again." : "The backend could not save this phone. Try again."));
     }
   };
 
@@ -630,6 +660,7 @@ function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, remove
           <h2>Inventory list</h2>
           <span>{adminProducts.length} saved in MongoDB</span>
         </div>
+        {error && !panelOpen && <p className="formError adminListError">{error}</p>}
         {adminProducts.length === 0 ? (
           <div className="emptyInventory">
             <h3>No phones yet</h3>
@@ -649,7 +680,19 @@ function AdminPanel({ adminProducts, addAdminProduct, updateAdminProduct, remove
                 {isFeatured(product) && <span className="featuredPill">Featured</span>}
                 <button onClick={() => openEdit(product)}>Edit</button>
                 <a href={whatsappUrl(product)} target="_blank" rel="noreferrer">WhatsApp</a>
-                <button className="dangerButton" onClick={() => removeAdminProduct(product[5]).catch(() => setError("The backend could not remove this phone. Try again."))}>Remove</button>
+                {pendingDeleteId === product[5] && (
+                  <button className="secondaryButton" type="button" onClick={() => setPendingDeleteId("")} disabled={deletingId === product[5]}>
+                    Cancel
+                  </button>
+                )}
+                <button
+                  className={pendingDeleteId === product[5] ? "dangerButton confirmDanger" : "dangerButton"}
+                  type="button"
+                  onClick={() => requestDelete(product)}
+                  disabled={Boolean(deletingId)}
+                >
+                  {deletingId === product[5] ? "Deleting..." : pendingDeleteId === product[5] ? "Confirm delete" : "Remove"}
+                </button>
               </article>
             ))}
           </div>
@@ -791,7 +834,10 @@ export function App() {
       method: "POST",
       body: formData,
     });
-    if (!response.ok) throw new Error("Unable to add phone.");
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Unable to add phone.");
+    }
     const data = await response.json();
     setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
     setCatalogProducts(Array.isArray(data.products) ? data.products : []);
@@ -801,14 +847,20 @@ export function App() {
       method: "PUT",
       body: formData,
     });
-    if (!response.ok) throw new Error("Unable to update phone.");
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Unable to update phone.");
+    }
     const data = await response.json();
     setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
     setCatalogProducts(Array.isArray(data.products) ? data.products : []);
   };
   const removeAdminProduct = async (id) => {
     const response = await fetch(`/api/admin-products?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    if (!response.ok) throw new Error("Unable to remove phone.");
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Unable to remove phone.");
+    }
     const data = await response.json();
     setAdminProducts(Array.isArray(data.adminProducts) ? data.adminProducts : []);
     setCatalogProducts(Array.isArray(data.products) ? data.products : []);

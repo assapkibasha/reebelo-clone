@@ -7,6 +7,34 @@ const collectionName = process.env.MONGODB_PRODUCTS_COLLECTION || "phones";
 
 let clientPromise;
 
+function formatMongoError(error) {
+  const message = error?.message || "MongoDB connection failed.";
+
+  if (message.includes("querySrv ETIMEOUT")) {
+    return "MongoDB Atlas DNS lookup timed out. Check your network DNS or use Atlas' standard connection string instead of mongodb+srv.";
+  }
+
+  if (message.includes("tlsv1 alert internal error") || message.includes("SSL routines")) {
+    return "MongoDB Atlas rejected the SSL connection. Check Atlas Network Access/IP allowlist, cluster status, and the MongoDB connection string.";
+  }
+
+  return message;
+}
+
+function formatCloudinaryError(error) {
+  const message = error?.message || "Cloudinary upload failed.";
+
+  if (message.includes("getaddrinfo ENOTFOUND api.cloudinary.com")) {
+    return "Cloudinary DNS lookup failed. Check your internet/DNS connection, then retry the image upload.";
+  }
+
+  if (message.includes("ENOTFOUND") || message.includes("EAI_AGAIN")) {
+    return "Cloudinary could not be reached through DNS. Check your internet/DNS connection, then retry.";
+  }
+
+  return message;
+}
+
 function assertMongoConfigured() {
   if (!uri) {
     throw new Error("MONGODB_URI is not configured.");
@@ -56,7 +84,7 @@ export async function listProducts() {
       products: [],
       adminProducts: [],
       databaseReady: false,
-      error: error.message,
+      error: formatMongoError(error),
     };
   }
 }
@@ -77,26 +105,30 @@ function configureCloudinary() {
 }
 
 async function uploadImage(file) {
-  configureCloudinary();
-  const bytes = Buffer.from(await file.arrayBuffer());
+  try {
+    configureCloudinary();
+    const bytes = Buffer.from(await file.arrayBuffer());
 
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: process.env.CLOUDINARY_FOLDER || "kg-phone-store/phones",
-        resource_type: "image",
-      },
-      (error, result) => {
-        if (error || !result) {
-          reject(error || new Error("Cloudinary upload failed."));
-          return;
-        }
-        resolve(result);
-      },
-    );
+    return await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: process.env.CLOUDINARY_FOLDER || "kg-phone-store/phones",
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error || !result) {
+            reject(error || new Error("Cloudinary upload failed."));
+            return;
+          }
+          resolve(result);
+        },
+      );
 
-    stream.end(bytes);
-  });
+      stream.end(bytes);
+    });
+  } catch (error) {
+    throw new Error(formatCloudinaryError(error));
+  }
 }
 
 export async function createProduct(formData) {
@@ -112,24 +144,28 @@ export async function createProduct(formData) {
     throw new Error("Invalid phone payload.");
   }
 
-  const upload = await uploadImage(imageFile);
-  const collection = await productsCollection();
-  const doc = {
-    name,
-    brand,
-    specs,
-    price,
-    tag: tag || brand,
-    image: upload.secure_url,
-    cloudinaryPublicId: upload.public_id,
-    featured,
-    source: "admin",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  try {
+    const upload = await uploadImage(imageFile);
+    const collection = await productsCollection();
+    const doc = {
+      name,
+      brand,
+      specs,
+      price,
+      tag: tag || brand,
+      image: upload.secure_url,
+      cloudinaryPublicId: upload.public_id,
+      featured,
+      source: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-  const result = await collection.insertOne(doc);
-  return toProductTuple({ ...doc, _id: result.insertedId });
+    const result = await collection.insertOne(doc);
+    return toProductTuple({ ...doc, _id: result.insertedId });
+  } catch (error) {
+    throw new Error(formatMongoError(error));
+  }
 }
 
 export async function updateProduct(id, formData) {
@@ -149,38 +185,42 @@ export async function updateProduct(id, formData) {
     throw new Error("Invalid phone payload.");
   }
 
-  const collection = await productsCollection();
-  const doc = await collection.findOne({ _id: new ObjectId(id), source: { $ne: "seed" } });
-  if (!doc) {
-    throw new Error("Product not found.");
+  try {
+    const collection = await productsCollection();
+    const doc = await collection.findOne({ _id: new ObjectId(id), source: { $ne: "seed" } });
+    if (!doc) {
+      throw new Error("Product not found.");
+    }
+
+    const updates = {
+      name,
+      brand,
+      specs,
+      price,
+      tag: tag || brand,
+      featured,
+      updatedAt: new Date(),
+    };
+
+    let oldPublicId;
+    if (imageFile && typeof imageFile !== "string" && imageFile.size > 0) {
+      const upload = await uploadImage(imageFile);
+      updates.image = upload.secure_url;
+      updates.cloudinaryPublicId = upload.public_id;
+      oldPublicId = doc.cloudinaryPublicId;
+    }
+
+    await collection.updateOne({ _id: doc._id }, { $set: updates });
+
+    if (oldPublicId) {
+      configureCloudinary();
+      await cloudinary.uploader.destroy(oldPublicId).catch(() => null);
+    }
+
+    return toProductTuple({ ...doc, ...updates, _id: doc._id });
+  } catch (error) {
+    throw new Error(formatMongoError(error));
   }
-
-  const updates = {
-    name,
-    brand,
-    specs,
-    price,
-    tag: tag || brand,
-    featured,
-    updatedAt: new Date(),
-  };
-
-  let oldPublicId;
-  if (imageFile && typeof imageFile !== "string" && imageFile.size > 0) {
-    const upload = await uploadImage(imageFile);
-    updates.image = upload.secure_url;
-    updates.cloudinaryPublicId = upload.public_id;
-    oldPublicId = doc.cloudinaryPublicId;
-  }
-
-  await collection.updateOne({ _id: doc._id }, { $set: updates });
-
-  if (oldPublicId) {
-    configureCloudinary();
-    await cloudinary.uploader.destroy(oldPublicId).catch(() => null);
-  }
-
-  return toProductTuple({ ...doc, ...updates, _id: doc._id });
 }
 
 export async function deleteProduct(id) {
@@ -188,16 +228,20 @@ export async function deleteProduct(id) {
     throw new Error("Invalid product id.");
   }
 
-  const collection = await productsCollection();
-  const doc = await collection.findOne({ _id: new ObjectId(id), source: { $ne: "seed" } });
-  if (!doc) {
-    throw new Error("Admin product not found.");
-  }
+  try {
+    const collection = await productsCollection();
+    const doc = await collection.findOne({ _id: new ObjectId(id), source: { $ne: "seed" } });
+    if (!doc) {
+      throw new Error("Admin product not found.");
+    }
 
-  await collection.deleteOne({ _id: doc._id });
+    await collection.deleteOne({ _id: doc._id });
 
-  if (doc.cloudinaryPublicId) {
-    configureCloudinary();
-    await cloudinary.uploader.destroy(doc.cloudinaryPublicId).catch(() => null);
+    if (doc.cloudinaryPublicId) {
+      configureCloudinary();
+      await cloudinary.uploader.destroy(doc.cloudinaryPublicId).catch(() => null);
+    }
+  } catch (error) {
+    throw new Error(formatMongoError(error));
   }
 }
